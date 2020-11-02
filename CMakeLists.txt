@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.0.0)
+project(WichHutFinder)
+link_directories(${CMAKE_SOURCE_DIR}/lib/cubiomes/)
+SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pthread -O0")
+set(CMAKE_BUILD_TYPE Debug)
+add_executable(WichHutFinder main.cpp)
+target_link_libraries(WichHutFinder libcubiomes.a)
