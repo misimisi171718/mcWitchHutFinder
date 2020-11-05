@@ -31,10 +31,20 @@ bool isNeigbour(const Pos &firs, const Pos &second)
 
 huts filterNeigbours(huts& input)
 {
+   int prevXPos1 = 0;
+   int prevXPos2 = 0;
+   int XVal = input[0].position.x;
    for (size_t i = 0; i < input.size(); i++)
    {
+      if (input[i].position.x != XVal)
+      {
+         XVal = input[i].position.x;
+         prevXPos2 = prevXPos1;
+         prevXPos1 = i;
+      }
+      
       input[i].neigbours = 0;
-      for (size_t j = 0; j < input.size(); j++)
+      for (size_t j = prevXPos2; input[i].position.x + 1 >= input[j].position.x && j < input.size(); j++)
          if(isNeigbour(input[i].position, input[j].position))
             input[i].neigbours++;
    }
@@ -134,7 +144,10 @@ int main(int argc, char const *argv[])
    setupGenerator(&g, MC_1_16);
    //int64_t seed = 9033216931289589291;
    int64_t seed = 17451728208755585;
-   int Distance = 100;
+   applySeed(&g,seed);
+   int Distance = 200;
+
+   auto start = std::chrono::high_resolution_clock::now();
 
    huts h;
    h.reserve(pow(Distance*2,2));
@@ -142,14 +155,27 @@ int main(int argc, char const *argv[])
       for (int z = Distance * -1; z < Distance; z++)
       {
          Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
+         if (getBiomeAtPos(&g,temp) != swamp)
+            continue;
          if(isViableStructurePos(Swamp_Hut, MC_1_16, &g, seed, temp.x, temp.z))
             h.push_back({{x,z},0});
       }
+
+   auto end = std::chrono::high_resolution_clock::now();
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
+      << "ms" << std::endl;
+
+   start = std::chrono::high_resolution_clock::now();
 
    h = filterNeigbours(h);
    h = filterNeigbours(h);
    auto j = getQuads(h);
    j = filterQuads(j,seed);
+
+   end = std::chrono::high_resolution_clock::now();
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
+      << "ms" << std::endl;
+
    for (size_t i = 0; i < j.size(); i++)
    {
       std::cout << "[" << std::endl;
