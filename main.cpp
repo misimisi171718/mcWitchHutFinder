@@ -103,7 +103,8 @@ quadHuts getQuads(huts& input)
 
 float distance(const Pos first, const Pos second)
 {
-   return pow(first.x - second.x, 2) + pow(first.z - second.z, 2);
+   float ret = sqrt(pow(first.x - second.x, 2) + pow(first.z - second.z, 2));
+   return ret;
 }
 
 quadHuts filterQuads(quadHuts& input,const int64_t seed)
@@ -117,7 +118,7 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
          positions[j] = getStructurePos(SWAMP_HUT_CONFIG,seed,i[j].position.x,i[j].position.x,NULL);
       for (size_t j = 0; j < 4; j++)
          for (size_t k = j+1; k < 4; k++)
-            if (distance(positions[j],positions[k]) > pow(128*2,2))
+            if (distance(positions[j],positions[k]) > 256.0)
                goto TOOFAR;
 
       if (false)
@@ -136,13 +137,14 @@ int main(int argc, char const *argv[])
    initBiomes();
    LayerStack g;
    setupGenerator(&g, MC_1_16);
-   int64_t seed = 9033216931289589291;
-   //int64_t seed = 17451728208755585;
-   int distance = 6000;
+   //int64_t seed = 9033216931289589291;
+   int64_t seed = 17451728208755585;
+   int Distance = 100;
 
    huts h;
-   for (int x = distance * -1; x < distance; x++)
-      for (int z = distance * -1; z < distance; z++)
+   h.reserve(pow(Distance*2,2));
+   for (int x = Distance * -1; x < Distance; x++)
+      for (int z = Distance * -1; z < Distance; z++)
       {
          Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
          if(isViableStructurePos(Swamp_Hut, MC_1_16, &g, seed, temp.x, temp.z))
@@ -155,7 +157,14 @@ int main(int argc, char const *argv[])
    j = filterQuads(j,seed);
    for (size_t i = 0; i < j.size(); i++)
    {
-      std::cout << j[i][0].position.x << "; " << j[i][0].position.z << std::endl;
+      std::cout << "[" << std::endl;
+      for (size_t k = 0; k < 4; k++)
+      {
+         Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, j[i][k].position.x, j[i][k].position.z, NULL);
+         std::cout << "\t[" << temp.x << "; " << temp.z << "]" << std::endl;
+      }
+      std::cout << "]" << std::endl;
    }
+   std::cout << distance({446105,121721},{446745,121705}) << std::endl;
    return 0;
 }
