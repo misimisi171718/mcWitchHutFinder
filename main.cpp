@@ -101,9 +101,9 @@ quadHuts getQuads(huts& input)
    return ret;
 }
 
-float distance(const Pos first, const Pos second)
+int distance(const Pos first, const Pos second)
 {
-   float ret = sqrt(pow(first.x - second.x, 2) + pow(first.z - second.z, 2));
+   int ret = pow(first.x - second.x, 2) + pow(first.z - second.z, 2);
    return ret;
 }
 
@@ -115,17 +115,12 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
       bool bad = false;
       std::array<Pos,4> positions;
       for (size_t j = 0; j < 4; j++)
-         positions[j] = getStructurePos(SWAMP_HUT_CONFIG,seed,i[j].position.x,i[j].position.x,NULL);
+         positions[j] = getStructurePos(SWAMP_HUT_CONFIG,seed,i[j].position.x,i[j].position.z,NULL);
       for (size_t j = 0; j < 4; j++)
          for (size_t k = j+1; k < 4; k++)
-            if (distance(positions[j],positions[k]) > 256.0)
-               goto TOOFAR;
+            if (distance(positions[j],positions[k]) >= 256 * 256)
+               bad = true;
 
-      if (false)
-      {
-         TOOFAR:
-         bad = true;
-      }
       if(!bad)
          ret.push_back(i);
    }
@@ -165,6 +160,5 @@ int main(int argc, char const *argv[])
       }
       std::cout << "]" << std::endl;
    }
-   std::cout << distance({446105,121721},{446745,121705}) << std::endl;
    return 0;
 }
