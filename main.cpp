@@ -4,6 +4,8 @@
 #include <math.h>
 #include <chrono>
 #include <array>
+#include <tuple>
+#include <string>
 
 struct hut
 {
@@ -19,6 +21,59 @@ struct hut
 typedef std::vector<hut> huts;
 typedef std::array<hut,4> quadHut;
 typedef std::vector<quadHut> quadHuts;
+
+std::tuple<int64_t,int32_t,MCversion> parseArguments(const int argc, const char *argv[])
+{
+   if(argc < 3 && argc > 3)
+   {
+      std::cout << "usage: quadWichHutFinder [SEED] [SEARCH RADIUS] [MINECRAFT VERSION]" << std::endl;
+      std::exit(0);
+   }
+
+
+   int64_t seed;
+   try
+   {
+      seed = std::stol(argv[1]);
+   }
+   catch(const std::exception& e)
+   {
+      std::cerr << "seed must only contain numbers" << std::endl;
+      std::exit(1);
+   }
+   
+   int32_t radius;
+   try
+   {
+      radius = std::stoi(argv[2]);
+   }
+   catch(const std::exception& e)
+   {
+      std::cerr << "radius must only contain numbers" << std::endl;
+      std::exit(1);
+   }
+   
+   MCversion version;
+
+   if(argc == 4)
+      try
+      {
+         version = static_cast<MCversion>(std::stoi(argv[3]) - 7);
+      }
+      catch(const std::exception& e)
+      {
+         std::cerr << "minecraft version can be specified by just just adding the main version number" << std::endl
+            << "example: 1.16.4 -> 16" << std::endl;
+         std::exit(1);
+      }
+      
+   else
+   {
+      std::cout << "minecarft version not specified defaulting to 1.16" << std::endl;
+      version = MC_1_16;
+   }
+   return std::make_tuple(seed,radius,version);
+}
 
 bool isNeigbour(const Pos &firs, const Pos &second)
 {
@@ -139,13 +194,15 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
 
 int main(int argc, char const *argv[])
 {
+   auto [seed,Distance,version] = parseArguments(argc, argv);
+   //int64_t seed = 17451728208755585;
+   //int Distance = 200;
+   //MCversion version = MC_1_16;
    initBiomes();
    LayerStack g;
-   setupGenerator(&g, MC_1_16);
+   setupGenerator(&g, version);
    //int64_t seed = 9033216931289589291;
-   int64_t seed = 17451728208755585;
    applySeed(&g,seed);
-   int Distance = 200;
 
    auto start = std::chrono::high_resolution_clock::now();
 
@@ -155,9 +212,7 @@ int main(int argc, char const *argv[])
       for (int z = Distance * -1; z < Distance; z++)
       {
          Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
-         if (getBiomeAtPos(&g,temp) != swamp)
-            continue;
-         if(isViableStructurePos(Swamp_Hut, MC_1_16, &g, seed, temp.x, temp.z))
+         if(isViableStructurePos(Swamp_Hut, version, &g, seed, temp.x, temp.z))
             h.push_back({{x,z},0});
       }
 
