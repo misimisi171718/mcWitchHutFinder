@@ -172,7 +172,7 @@ int main(int argc, char const *argv[])
 
    auto start = std::chrono::high_resolution_clock::now();
 
-   auto threadCount = std::thread::hardware_concurrency();
+   auto threadCount = 0;//std::thread::hardware_concurrency();
    huts h;
    if (threadCount == 0)
    {
