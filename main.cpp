@@ -115,52 +115,35 @@ huts filterNeigbours(huts& input)
 quadHuts getQuads(huts& input)
 {
    quadHuts ret;
-   while (input.size() != 0)
+   for (size_t i = 0; i < input.size(); i++)
    {
       quadHut temp;
-      temp[0] = input[0];
-      size_t i = 0;
+      temp[0] = input[i];
       size_t found = 1;
 
-      while (input[i].position.z - input[0].position.z < 2 && i < input.size())
+      for (size_t j = i; input[i].position.x + 1 >= input[j].position.x && j < input.size(); j++)
       {
-         if(temp[0].position.x+1 == input[i].position.x && temp[0].position.z == input[i].position.z)
+         if(temp[0].position.x+1 == input[j].position.x && temp[0].position.z == input[j].position.z)
          {
-            temp[1] = input[i];
+            temp[1] = input[j];
             found++;
          }
-         if(temp[0].position.x == input[i].position.x && temp[0].position.z + 1 == input[i].position.z)
+         if(temp[0].position.x == input[j].position.x && temp[0].position.z + 1 == input[j].position.z)
          {
-            temp[2] = input[i];
+            temp[2] = input[j];
             found++;
          }
-         if(temp[0].position.x+1 == input[i].position.x && temp[0].position.z +1 == input[i].position.z)
+         if(temp[0].position.x+1 == input[j].position.x && temp[0].position.z +1 == input[j].position.z)
          {
-            temp[3] = input[i];
+            temp[3] = input[j];
             found++;
          }
-         i++;
       }
       
       if(found == 4)
       {
          ret.push_back(temp);
-         for (size_t i = 0; i < 4; i++)
-         {
-            int j = 0;
-            while (true)
-            {
-               if(input[j] == temp[i])
-               {
-                  input.erase(input.begin() + j);
-                  break;
-               }
-               j++;
-            }
-         }
       }
-      else
-         input.erase(input.begin());
       
    }
    return ret;
@@ -196,12 +179,9 @@ int main(int argc, char const *argv[])
 {
    auto [seed,Distance,version] = parseArguments(argc, argv);
    //int64_t seed = 17451728208755585;
-   //int Distance = 200;
-   //MCversion version = MC_1_16;
    initBiomes();
    LayerStack g;
    setupGenerator(&g, version);
-   //int64_t seed = 9033216931289589291;
    applySeed(&g,seed);
 
    auto start = std::chrono::high_resolution_clock::now();
@@ -222,7 +202,6 @@ int main(int argc, char const *argv[])
 
    start = std::chrono::high_resolution_clock::now();
 
-   h = filterNeigbours(h);
    h = filterNeigbours(h);
    auto j = getQuads(h);
    j = filterQuads(j,seed);
