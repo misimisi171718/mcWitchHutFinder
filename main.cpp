@@ -6,6 +6,8 @@
 #include <array>
 #include <tuple>
 #include <string>
+#include <thread>
+#include <future>
 
 struct hut
 {
@@ -175,26 +177,55 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
    return ret;
 }
 
+huts getHutPositions(int64_t seed,  int distance, MCversion version, int begin, int end)
+{
+   huts ret;
+   LayerStack g;
+   setupGenerator(&g, version);
+   ret.reserve(pow(distance*2,2)/10);
+   for (int x = begin; x < end; x++)
+      for (int z = distance * -1; z < distance; z++)
+      {
+         Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
+         if(isViableStructurePos(Swamp_Hut, version, &g, seed, temp.x, temp.z))
+            ret.push_back({{x,z},0});
+      }
+   return ret;
+}
+
 int main(int argc, char const *argv[])
 {
    auto [seed,Distance,version] = parseArguments(argc, argv);
    //int64_t seed = 17451728208755585;
    initBiomes();
-   LayerStack g;
-   setupGenerator(&g, version);
-   applySeed(&g,seed);
 
    auto start = std::chrono::high_resolution_clock::now();
 
+   auto threadCount = std::thread::hardware_concurrency();
    huts h;
-   h.reserve(pow(Distance*2,2));
-   for (int x = Distance * -1; x < Distance; x++)
-      for (int z = Distance * -1; z < Distance; z++)
+   if (threadCount == 0)
+      h = getHutPositions(seed,Distance,version,-Distance,Distance);
+   else
+   {
+      std::vector<std::future<huts>> threads;
+      std::vector<huts> threadRetuns;
+      threads.reserve(threadCount);
+      for (size_t i = 0; i < threadCount; i++)
       {
-         Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
-         if(isViableStructurePos(Swamp_Hut, version, &g, seed, temp.x, temp.z))
-            h.push_back({{x,z},0});
+         int start = floor(-(float)Distance+( i   *(2*(float)Distance/(float)threadCount)));
+         int end   = floor(-(float)Distance+((i+1)*(2*(float)Distance/(float)threadCount)));
+         threads.push_back(std::async(getHutPositions,seed,Distance,version,start,end));
       }
+      for (size_t i = 0; i < threadCount; i++)
+         threadRetuns.push_back(threads[i].get());
+      int numHuts = 0;
+      for (auto &&i : threadRetuns)
+         numHuts += i.size();
+      h.reserve(numHuts);
+      for (auto &&i : threadRetuns)
+         h.insert(h.end(),i.begin(),i.end());
+   }
+   
 
    auto end = std::chrono::high_resolution_clock::now();
    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
