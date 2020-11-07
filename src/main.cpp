@@ -1,4 +1,6 @@
-#include "lib/cubiomes/finders.h"
+#include "cubiomes/finders.h"
+#include "types.hpp"
+#include "getHutPosition.hpp"
 #include <iostream>
 #include <vector>
 #include <math.h>
@@ -8,21 +10,6 @@
 #include <string>
 #include <thread>
 #include <future>
-
-struct hut
-{
-   Pos position;
-   uint8_t neigbours = 0;
-
-   bool operator==(const hut& other) const {
-      return position.x == other.position.x && position.z == other.position.z &&
-         neigbours == other.neigbours;
-   }
-};
-
-typedef std::vector<hut> huts;
-typedef std::array<hut,4> quadHut;
-typedef std::vector<quadHut> quadHuts;
 
 std::tuple<int64_t,int32_t,MCversion> parseArguments(const int argc, const char *argv[])
 {
@@ -177,22 +164,6 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
    return ret;
 }
 
-huts getHutPositions(int64_t seed,  int distance, MCversion version, int begin, int end)
-{
-   huts ret;
-   LayerStack g;
-   setupGenerator(&g, version);
-   ret.reserve(pow(distance*2,2)/10);
-   for (int x = begin; x < end; x++)
-      for (int z = distance * -1; z < distance; z++)
-      {
-         Pos temp = getStructurePos(SWAMP_HUT_CONFIG, seed, x, z, NULL);
-         if(isViableStructurePos(Swamp_Hut, version, &g, seed, temp.x, temp.z))
-            ret.push_back({{x,z},0});
-      }
-   return ret;
-}
-
 int main(int argc, char const *argv[])
 {
    auto [seed,Distance,version] = parseArguments(argc, argv);
@@ -204,7 +175,10 @@ int main(int argc, char const *argv[])
    auto threadCount = std::thread::hardware_concurrency();
    huts h;
    if (threadCount == 0)
+   {
       h = getHutPositions(seed,Distance,version,-Distance,Distance);
+      std::cerr << "thread count coud not be determend using a single thread" << std::endl;
+   }
    else
    {
       std::vector<std::future<huts>> threads;
