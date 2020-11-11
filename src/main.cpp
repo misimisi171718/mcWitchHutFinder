@@ -11,11 +11,12 @@
 #include <thread>
 #include <future>
 
-std::tuple<int64_t,int32_t,MCversion> parseArguments(const int argc, const char *argv[])
+std::tuple<int64_t,MCversion,Pos,Pos> parseArguments(const int argc, const char *argv[])
 {
-   if(argc < 3 && argc > 3)
+   if(argc != 7)
    {
-      std::cout << "usage: quadWichHutFinder [SEED] [SEARCH RADIUS] [MINECRAFT VERSION]" << std::endl;
+      std::cout << "usage: quadWichHutFinder [SEED] [MINECRAFT VERSION] [SEARCH AREA FIRST COORDINATES] [SEARCH AREA SECOND COORDINATES]" << std::endl
+         << "example: ./WichHutFinder 17451728208755585 16 -5000 -5000 5000 5000" << std::endl;
       std::exit(0);
    }
 
@@ -31,10 +32,25 @@ std::tuple<int64_t,int32_t,MCversion> parseArguments(const int argc, const char 
       std::exit(1);
    }
    
-   int32_t radius;
+   MCversion version;
+
    try
    {
-      radius = std::stoi(argv[2]);
+      version = static_cast<MCversion>(std::stoi(argv[2]) - 7);
+   }
+   catch(const std::exception& e)
+   {
+      std::cerr << "minecraft version can be specified by just just adding the main version number" << std::endl
+         << "example: 1.16.4 -> 16" << std::endl;
+      std::exit(1);
+   }
+
+      Pos begin;
+   Pos end;
+   try
+   {
+      end   = {std::stoi(argv[5])/512, std::stoi(argv[6])/512};
+      begin = {std::stoi(argv[3])/512, std::stoi(argv[4])/512};
    }
    catch(const std::exception& e)
    {
@@ -42,26 +58,7 @@ std::tuple<int64_t,int32_t,MCversion> parseArguments(const int argc, const char 
       std::exit(1);
    }
    
-   MCversion version;
-
-   if(argc == 4)
-      try
-      {
-         version = static_cast<MCversion>(std::stoi(argv[3]) - 7);
-      }
-      catch(const std::exception& e)
-      {
-         std::cerr << "minecraft version can be specified by just just adding the main version number" << std::endl
-            << "example: 1.16.4 -> 16" << std::endl;
-         std::exit(1);
-      }
-      
-   else
-   {
-      std::cout << "minecarft version not specified defaulting to 1.16" << std::endl;
-      version = MC_1_16;
-   }
-   return std::make_tuple(seed,radius,version);
+   return std::make_tuple(seed,version,begin,end);
 }
 
 bool isNeigbour(const Pos &firs, const Pos &second)
@@ -166,18 +163,18 @@ quadHuts filterQuads(quadHuts& input,const int64_t seed)
 
 int main(int argc, char const *argv[])
 {
-   auto [seed,Distance,version] = parseArguments(argc, argv);
+   auto [seed,version,begin,end] = parseArguments(argc, argv);
    //int64_t seed = 17451728208755585;
    initBiomes();
 
-   auto start = std::chrono::high_resolution_clock::now();
+   auto timeStart = std::chrono::high_resolution_clock::now();
 
-   auto threadCount = 0;//std::thread::hardware_concurrency();
+   size_t threadCount = std::thread::hardware_concurrency();
    huts h;
    if (threadCount == 0)
    {
-      h = getHutPositions(seed,Distance,version,-Distance,Distance);
       std::cerr << "thread count coud not be determend using a single thread" << std::endl;
+      h = getHutPositions(seed,version,begin,end);
    }
    else
    {
@@ -186,9 +183,12 @@ int main(int argc, char const *argv[])
       threads.reserve(threadCount);
       for (size_t i = 0; i < threadCount; i++)
       {
-         int start = floor(-(float)Distance+( i   *(2*(float)Distance/(float)threadCount)));
-         int end   = floor(-(float)Distance+((i+1)*(2*(float)Distance/(float)threadCount)));
-         threads.push_back(std::async(getHutPositions,seed,Distance,version,start,end));
+         Pos localBegin = begin;
+         Pos localEnd   = end;
+         float with = abs(begin.x-end.x);
+         localBegin.x = floor(begin.x+( i   *(with/(float)threadCount)));
+         localEnd.x   = floor(begin.x+((i+1)*(with/(float)threadCount)));
+         threads.push_back(std::async(getHutPositions,seed,version,localBegin,localEnd));
       }
       for (size_t i = 0; i < threadCount; i++)
          threadRetuns.push_back(threads[i].get());
@@ -201,18 +201,18 @@ int main(int argc, char const *argv[])
    }
    
 
-   auto end = std::chrono::high_resolution_clock::now();
-   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
+   auto timeEnd = std::chrono::high_resolution_clock::now();
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count() 
       << "ms" << std::endl;
 
-   start = std::chrono::high_resolution_clock::now();
+   timeStart = std::chrono::high_resolution_clock::now();
 
    h = filterNeigbours(h);
    auto j = getQuads(h);
    j = filterQuads(j,seed);
 
-   end = std::chrono::high_resolution_clock::now();
-   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() 
+   timeEnd = std::chrono::high_resolution_clock::now();
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count() 
       << "ms" << std::endl;
 
    for (size_t i = 0; i < j.size(); i++)
